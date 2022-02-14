@@ -20,9 +20,9 @@ type clientFn (func(*Client, *url.URL) *request)
 
 type requestFn (func(*request) *request)
 
-func encodeBodyJSON(v interface{}) requestFn {
+func encodeJSON(v interface{}) requestFn {
 	return func(r *request) *request {
-		return r.EncodeBodyJSON(v)
+		return r.EncodeJSON(v)
 	}
 }
 
@@ -205,13 +205,13 @@ func TestBlackbox(t *testing.T) {
 		resultCheckFn   resultCheckFn
 	}{
 		{
-			name:            "encodeSaneBodyJSON",
-			fn:              encodeBodyJSON(payload{1, "a"}),
+			name:            "encodeSaneJSON",
+			fn:              encodeJSON(payload{1, "a"}),
 			requestCheckFns: []requestCheckFn{checkRequestBody("{\"Val1\":1,\"Val2\":\"a\"}\n")},
 		},
 		{
-			name:          "failToEncodeBodyJSON",
-			fn:            encodeBodyJSON(&unencodablePayload{}),
+			name:          "failToEncodeJSON",
+			fn:            encodeJSON(&unencodablePayload{}),
 			resultCheckFn: checkResultRawBytes(nil, errUnencodable),
 		},
 		// TODO(rob(h)) add possibilities here for using prepareCb. Also, figure

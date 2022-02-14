@@ -104,7 +104,21 @@ func makeRequest(
 	}
 }
 
-func (r *request) EncodeBodyJSON(reqbody interface{}) *request {
+// WithRequestBody allows the consumer to specify any request body
+func (r *request) WithRequestBody(reqbody io.ReadCloser) *request {
+	// do nothing if there is already an error preparing this request
+	if r.err != nil {
+		return r
+	}
+
+	r.reqbody = reqbody
+
+	return r
+}
+
+// EncodeJSON encodes the provided `reqbody` struct to JSON and sets it as the
+// reqbody of the HTTP request
+func (r *request) EncodeJSON(reqbody interface{}) *request {
 	// do nothing if there is already an error preparing this request
 	if r.err != nil {
 		return r
@@ -123,7 +137,9 @@ func (r *request) EncodeBodyJSON(reqbody interface{}) *request {
 }
 
 // Prepare defines a callback that will be invoked during the preparation
-// phase, i.e. just before `Do()` is invoked on the inner `httpClientInterface`
+// phase, i.e. just before `Do()` is invoked on the inner
+// `httpClientInterface`. It is recommended that the consumer does not
+// manipulate the request body during this callback.
 func (r *request) Prepare(prepareCB func(*http.Request) error) *request {
 	r.prepareCB = prepareCB
 	return r
@@ -194,8 +210,50 @@ type result struct {
 	err      error
 }
 
-// RawBytes reads the entire response body into a slice of bytes and returns
-// it unless there was an error, in which case that error is returned instead
+// HandleResponse allows consumer access to the underlying *http.Response
+// without terminating the call chain, which is useful for consumers who need
+// to inspect other aspects of the response, such as its headers. It is not
+// recommended to process the HTTP response body in this callback. Those
+// consumers will likely prefer to use the `Response` method. This method does
+// not terminate the call chain.
+func (r *result) HandleResponse(handleCb func(*http.Response) error) *result {
+	// do nothing if there is already an error in the request chain
+	if r.err != nil {
+		return r
+	}
+
+	err := handleCb(r.response)
+	if err != nil {
+		r.err = err
+	}
+
+	return r
+}
+
+// Response returns the underlying HTTP response, which is useful to consumers
+// who wish to handle the response body in a way that is not otherwise
+// supported by this library. If this method is used to terminate the call
+// chain, then the caller is responsible for closing the request body. This
+// method terminates the call chain.
+func (r *result) Response() (*http.Response, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+
+	if r.response == nil {
+		return nil, fmt.Errorf("Expected a non-nil response for '%s %s'", r.request.method, r.request.u)
+	}
+
+	if err := checkStatus(r.request, r.response); err != nil {
+		return nil, err
+	}
+
+	return r.response, nil
+}
+
+// RawBytes reads the entire response body into a slice of bytes and returns it
+// unless there was an error, in which case that error is returned instead.
+// This method terminates a call chain.
 func (r *result) RawBytes() ([]byte, error) {
 	if r.err != nil {
 		return nil, r.err
@@ -219,7 +277,8 @@ func (r *result) RawBytes() ([]byte, error) {
 	return respbody, nil
 }
 
-// DecodeBodyJSON attempts to decode the response body into the provided `v`
+// DecodeJSON attempts to decode the response body into the provided `v`. This
+// method terminates a call chain.
 func (r *result) DecodeJSON(v interface{}) error {
 	if r.err != nil {
 		return r.err
