@@ -1,4 +1,4 @@
-package http
+package rhttp
 
 import (
 	"net/http"
