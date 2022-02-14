@@ -116,12 +116,15 @@ func jsonPayload(v interface{}, t *testing.T) []byte {
 
 type resultCheckFn (func(*result, *testing.T))
 
-func checkResultRawBytes(expectedBuf []byte, expectedErr error) resultCheckFn {
+func checkResultRawBytes(
+	expectedBuf []byte,
+	expectedErr error,
+) resultCheckFn {
 	return func(result *result, t *testing.T) {
-		actualBuf, actualErr := result.RawBytes()
+		_, actualBuf, actualErr := result.RawBytes()
 
 		if diff := cmp.Diff(expectedBuf, actualBuf); diff != "" {
-			t.Errorf("Actual result diverges from expectation (-want +got): %s", diff)
+			t.Errorf("Actual body diverges from expectation (-want +got): %s", diff)
 		}
 
 		if diff := cmp.Diff(expectedErr, actualErr, cmpopts.EquateErrors()); diff != "" {
@@ -130,13 +133,16 @@ func checkResultRawBytes(expectedBuf []byte, expectedErr error) resultCheckFn {
 	}
 }
 
-func checkResultDecodeJSON(expectedV payload, expectedErr error) resultCheckFn {
+func checkResultDecodeJSON(
+	expectedV payload,
+	expectedErr error,
+) resultCheckFn {
 	return func(result *result, t *testing.T) {
 		var actualV payload
-		actualErr := result.DecodeJSON(&actualV)
+		_, actualErr := result.DecodeJSON(&actualV)
 
 		if diff := cmp.Diff(expectedV, actualV); diff != "" {
-			t.Errorf("Actual result diverges from expectation (-want +got): %s", diff)
+			t.Errorf("Actual payload diverges from expectation (-want +got): %s", diff)
 		}
 
 		if diff := cmp.Diff(expectedErr, actualErr, cmpopts.EquateErrors()); diff != "" {
@@ -148,7 +154,7 @@ func checkResultDecodeJSON(expectedV payload, expectedErr error) resultCheckFn {
 func checkResultDecodeJSONWithNilDest() resultCheckFn {
 	return func(result *result, t *testing.T) {
 		expectedErr := cmpopts.AnyError
-		actualErr := result.DecodeJSON(nil)
+		_, actualErr := result.DecodeJSON(nil)
 		if diff := cmp.Diff(expectedErr, actualErr, cmpopts.EquateErrors()); diff != "" {
 			t.Errorf("Actual error diverges from expectation (-want +got): %s", diff)
 		}

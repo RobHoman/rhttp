@@ -210,31 +210,11 @@ type result struct {
 	err      error
 }
 
-// HandleResponse allows consumer access to the underlying *http.Response
-// without terminating the call chain, which is useful for consumers who need
-// to inspect other aspects of the response, such as its headers. It is not
-// recommended to process the HTTP response body in this callback. Those
-// consumers will likely prefer to use the `Response` method. This method does
-// not terminate the call chain.
-func (r *result) HandleResponse(handleCb func(*http.Response) error) *result {
-	// do nothing if there is already an error in the request chain
-	if r.err != nil {
-		return r
-	}
-
-	err := handleCb(r.response)
-	if err != nil {
-		r.err = err
-	}
-
-	return r
-}
-
-// Response returns the underlying HTTP response, which is useful to consumers
-// who wish to handle the response body in a way that is not otherwise
-// supported by this library. If this method is used to terminate the call
-// chain, then the caller is responsible for closing the request body. This
-// method terminates the call chain.
+// Response returns the underlying HTTP response, which is useful
+// to consumers who wish to handle the response body in a way that
+// is not otherwise supported by this library. The caller is
+// responsible for closing the request body. This method
+// terminates the call chain.
 func (r *result) Response() (*http.Response, error) {
 	if r.err != nil {
 		return nil, r.err
@@ -251,10 +231,39 @@ func (r *result) Response() (*http.Response, error) {
 	return r.response, nil
 }
 
-// RawBytes reads the entire response body into a slice of bytes and returns it
-// unless there was an error, in which case that error is returned instead.
-// This method terminates a call chain.
-func (r *result) RawBytes() ([]byte, error) {
+// RawBytes reads the entire response body into a slice of bytes
+// and returns it, along with the underlying response. This method therefore
+// reads and closes the response body. If there was an error anywhere in the
+// chain, it is returned. As long as an HTTP response was generated, it will be
+// returned. This method terminates a call chain.
+func (r *result) RawBytes() (*http.Response, []byte, error) {
+	if r.err != nil {
+		return nil, nil, r.err
+	}
+
+	if r.response == nil {
+		return nil, nil, fmt.Errorf("Expected a non-nil response for '%s %s'", r.request.method, r.request.u)
+	}
+
+	defer r.response.Body.Close()
+
+	if err := checkStatus(r.request, r.response); err != nil {
+		return r.response, nil, err
+	}
+
+	respbody, err := ioutil.ReadAll(r.response.Body)
+	if err != nil {
+		return r.response, nil, fmt.Errorf("Failed to read response body for '%s %s': %w", r.request.method, r.request.u, err)
+	}
+
+	return r.response, respbody, nil
+}
+
+// DecodeJSON attempts to decode the response body into the provided `v`. This
+// method therefore reads and closes the response body. If there was an error
+// anywhere in the chain, it is returned. As long as an HTTP response was
+// generated, it will be returned. This method terminates a call chain.
+func (r *result) DecodeJSON(v interface{}) (*http.Response, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
@@ -266,44 +275,19 @@ func (r *result) RawBytes() ([]byte, error) {
 	defer r.response.Body.Close()
 
 	if err := checkStatus(r.request, r.response); err != nil {
-		return nil, err
-	}
-
-	respbody, err := ioutil.ReadAll(r.response.Body)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to read response body for '%s %s': %w", r.request.method, r.request.u, err)
-	}
-
-	return respbody, nil
-}
-
-// DecodeJSON attempts to decode the response body into the provided `v`. This
-// method terminates a call chain.
-func (r *result) DecodeJSON(v interface{}) error {
-	if r.err != nil {
-		return r.err
-	}
-
-	if r.response == nil {
-		return fmt.Errorf("Expected a non-nil response for '%s %s'", r.request.method, r.request.u)
-	}
-
-	defer r.response.Body.Close()
-
-	if err := checkStatus(r.request, r.response); err != nil {
-		return err
+		return r.response, err
 	}
 
 	if v == nil {
-		return fmt.Errorf("Decode destination was nil for '%s %s'", r.request.method, r.request.u)
+		return r.response, fmt.Errorf("Decode destination was nil for '%s %s'", r.request.method, r.request.u)
 	}
 
 	err := json.NewDecoder(r.response.Body).Decode(v)
 	if err != nil {
-		return fmt.Errorf("Failed to decode the response body for '%s %s': %w", r.request.method, r.request.u, err)
+		return r.response, fmt.Errorf("Failed to decode the response body for '%s %s': %w", r.request.method, r.request.u, err)
 	}
 
-	return nil
+	return r.response, nil
 }
 
 // checkStatus inspects for status codes greater than or equal to 400. If it

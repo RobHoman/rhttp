@@ -33,7 +33,7 @@ u := &url.URL{
 
 var requestPayload interface{}
 var responsePayload interface{}
-err := c.POST(u).
+resp, err := c.POST(u).
 	EncodeJSON(&requestPayload).
 	Do().
 	DecodeJSON(&responsePayload)
@@ -59,9 +59,7 @@ call chain. `Response()` is the most generic way to do so, and it will give the
 caller access to the underlying `*http.Response` or it will return the first
 error encountered in the call chain or a typed `*rhttp.Error`. `RawBytes` and
 `DecodeJSON` are similar, but they also assist the caller in processing the
-response bodies. Callers that want to inspect the underlying `*http.Response` in
-conjunction with the convenience of terminating the chain with `RawBytes` or
-`DecodeJSON` should use the `HandleResponse` method.
+response bodies.
 
 The zero-value for an `rhttp.Client` struct is a ready-to-use client. The
 underlying `http.Client` used will be lazily initialized as the zero-value
@@ -74,3 +72,25 @@ The `rhttp.Error` type holds an HTTP status code and a message, and it meets the
 golang `error` interface. The `Is` and `HasStatusCode` methods allow the
 consumer to easily check the error for its underlying status code and handle it
 accordingly.
+
+Here is an example with an error check:
+```
+c := &rhttp.Client{}
+u := &url.URL{
+	Scheme: "https",
+	Host:   "HOSTNAME",
+	Path:   "RESOURCE-PATH",
+}
+
+var requestPayload interface{}
+var responsePayload interface{}
+resp, err := c.POST(u).
+	EncodeJSON(&requestPayload).
+	Do().
+	DecodeJSON(&responsePayload)
+if rhttp.ErrConflict.Is(err) {
+	// handle accordingly
+} else if err != nil {
+	// handle accordingly
+}
+```
