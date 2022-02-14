@@ -1,4 +1,4 @@
-module robhoman/rhttp
+module github.com/robhoman/rhttp
 
 go 1.17
 
