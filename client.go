@@ -43,43 +43,44 @@ func (c *Client) lazyInitialize() {
 // GET generates an HTTP GET `*request` that the caller may customize and
 // ultimately `Do()`
 func (c *Client) GET(u *url.URL) *request {
-	c.lazyInitialize()
-	return makeRequest(c.ci, http.MethodGet, u)
+	return c.NewRequest(http.MethodGet, u)
 }
 
 // HEAD generates an HTTP HEAD `*request` that the caller may customize and
 // ultimately `Do()`
 func (c *Client) HEAD(u *url.URL) *request {
-	c.lazyInitialize()
-	return makeRequest(c.ci, http.MethodHead, u)
+	return c.NewRequest(http.MethodHead, u)
 }
 
 // POST generates an HTTP POST `*request` that the caller may customize and
 // ultimately `Do()`
 func (c *Client) POST(u *url.URL) *request {
-	c.lazyInitialize()
-	return makeRequest(c.ci, http.MethodPost, u)
+	return c.NewRequest(http.MethodPost, u)
 }
 
 // PUT generates an HTTP PUT `*request` that the caller may customize and
 // ultimately `Do()`
 func (c *Client) PUT(u *url.URL) *request {
-	c.lazyInitialize()
-	return makeRequest(c.ci, http.MethodPut, u)
+	return c.NewRequest(http.MethodPut, u)
 }
 
 // PATCH generates an HTTP PATCH `*request` that the caller may customize and
 // ultimately `Do()`
 func (c *Client) PATCH(u *url.URL) *request {
-	c.lazyInitialize()
-	return makeRequest(c.ci, http.MethodPatch, u)
+	return c.NewRequest(http.MethodPatch, u)
 }
 
 // DELETE generates an HTTP DELETE `*request` that the caller may customize and
 // ultimately `Do()`
 func (c *Client) DELETE(u *url.URL) *request {
+	return c.NewRequest(http.MethodDelete, u)
+}
+
+// NewRequest generates an HTTP `*request` with the given HTTP method that the
+// caller may customize and ultimatley `Do()`
+func (c *Client) NewRequest(method string, u *url.URL) *request {
 	c.lazyInitialize()
-	return makeRequest(c.ci, http.MethodDelete, u)
+	return makeRequest(c.ci, method, u)
 }
 
 // request holds the details necessary to later prepare an `*http.Request` and
