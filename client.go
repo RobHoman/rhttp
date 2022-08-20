@@ -40,44 +40,45 @@ func (c *Client) lazyInitialize() {
 	}
 }
 
-// GET generates an HTTP GET `*request` that the caller may customize and
-// ultimately `Do()`
+// GET initializes an HTTP GET `*request` targeting the provided url. The
+// caller can now chain request preparation functions.
 func (c *Client) GET(u *url.URL) *request {
 	return c.NewRequest(http.MethodGet, u)
 }
 
-// HEAD generates an HTTP HEAD `*request` that the caller may customize and
-// ultimately `Do()`
+// HEAD initializes an HTTP HEAD `*request` targeting the provided url. The
+// caller can now chain request preparation functions.
 func (c *Client) HEAD(u *url.URL) *request {
 	return c.NewRequest(http.MethodHead, u)
 }
 
-// POST generates an HTTP POST `*request` that the caller may customize and
-// ultimately `Do()`
+// POST initializes an HTTP POST `*request` targeting the provided url. The
+// caller can now chain request preparation functions.
 func (c *Client) POST(u *url.URL) *request {
 	return c.NewRequest(http.MethodPost, u)
 }
 
-// PUT generates an HTTP PUT `*request` that the caller may customize and
-// ultimately `Do()`
+// PUT initializes an HTTP PUT `*request` targeting the provided url. The
+// caller can now chain request preparation functions.
 func (c *Client) PUT(u *url.URL) *request {
 	return c.NewRequest(http.MethodPut, u)
 }
 
-// PATCH generates an HTTP PATCH `*request` that the caller may customize and
-// ultimately `Do()`
+// PATCH initializes an HTTP PATCH `*request` targeting the provided url. The
+// caller can now chain request preparation functions.
 func (c *Client) PATCH(u *url.URL) *request {
 	return c.NewRequest(http.MethodPatch, u)
 }
 
-// DELETE generates an HTTP DELETE `*request` that the caller may customize and
-// ultimately `Do()`
+// DELETE initializes an HTTP DELETE `*request` targeting the provided url. The
+// caller can now chain request preparation functions.
 func (c *Client) DELETE(u *url.URL) *request {
 	return c.NewRequest(http.MethodDelete, u)
 }
 
-// NewRequest generates an HTTP `*request` with the given HTTP method that the
-// caller may customize and ultimatley `Do()`
+// NewRequest initialize an HTTP `*request` ready to use the provided request
+// method and targeting the provided url. The caller can now chain request
+// preparation functions.
 func (c *Client) NewRequest(method string, u *url.URL) *request {
 	c.lazyInitialize()
 	return makeRequest(c.ci, method, u)
@@ -85,7 +86,7 @@ func (c *Client) NewRequest(method string, u *url.URL) *request {
 
 // request holds the details necessary to later prepare an `*http.Request` and
 // also a reference to the `httpClientInterface` that will ultimately `Do()`
-// it.  However, the request may fail to become prepared, in which case there
+// it. However, the request may fail to become prepared, in which case there
 // is a non-nil `err`. The first error encountered is stored and once the err
 // is non-nil, all subsequent calls on the `*request` do nothing.
 type request struct {
