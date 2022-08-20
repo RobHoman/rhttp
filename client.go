@@ -255,22 +255,40 @@ func (r *result) RawBytes() (*http.Response, []byte, error) {
 		return nil, nil, r.err
 	}
 
+	buf := &bytes.Buffer{}
+	response, err := r.StreamResponse(buf)
+	if err != nil {
+		return response, nil, err
+	}
+	return response, buf.Bytes(), err
+}
+
+// StreamResponse streams the response body into the supplied destination
+// writer. It also returns the underlying http response. This method therefore
+// reads and closes the response body. If there was an error anywhere in the
+// chain, it is returned. As long as an HTTP response was generated, it will be
+// returned. This method terminates a call chain.
+func (r *result) StreamResponse(dst io.Writer) (*http.Response, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+
 	if r.response == nil {
-		return nil, nil, fmt.Errorf("expected a non-nil response for '%s %s'", r.request.method, r.request.u)
+		return nil, fmt.Errorf("expected a non-nil response for '%s %s'", r.request.method, r.request.u)
 	}
 
 	defer r.response.Body.Close()
 
 	if err := checkStatus(r.request, r.response); err != nil {
-		return r.response, nil, err
+		return r.response, err
 	}
 
-	respbody, err := ioutil.ReadAll(r.response.Body)
+	_, err := io.Copy(dst, r.response.Body)
 	if err != nil {
-		return r.response, nil, fmt.Errorf("failed to read response body for '%s %s': %w", r.request.method, r.request.u, err)
+		return r.response, fmt.Errorf("failed to copy response to destination for '%s %s': %w", r.request.method, r.request.u, err)
 	}
 
-	return r.response, respbody, nil
+	return r.response, nil
 }
 
 // DecodeJSON attempts to decode the response body into the provided `v`. This

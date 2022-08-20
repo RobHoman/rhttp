@@ -88,11 +88,15 @@ the response handling phase.
 With the request now executed, choose exactly one method to process the
 response.
 
-- `Response()` yields only the underlying `*http.Response`
-- `RawBytes()` yields a buffer containing the raw reponse body, in addition to
-  the underlying `*http.Response`
+- `Response()` yields only the underlying `*http.Response`. The caller must
+  close the `Body`.
+- `RawBytes()` yields a buffer containing the raw reponse body and closes the
+  response body, in addition to returning the underlying `*http.Response`
+- `StreamResponse(dst io.Writer)` copies the `*http.Response.Body` into the dst
+  `io.Writer` and closes the response body, in addition to the returning
+the underlying `*http.Response`
 - `DecodeJSON(interface{})` decodes the response body into the provided
-  parameter, in addition to the underlying `*http.Response`
+  parameter, in addition to returning the underlying `*http.Response`
 
 In all cases, the final returned value is an error. See [Errors](#Errors).
 

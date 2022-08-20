@@ -116,6 +116,8 @@ func jsonPayload(v interface{}, t *testing.T) []byte {
 
 type resultCheckFn (func(*result, *testing.T))
 
+// N.B.(rob(h)) this also provides full coverage for StreamResponse. If that
+// changes, update the tests
 func checkResultRawBytes(
 	expectedBuf []byte,
 	expectedErr error,
