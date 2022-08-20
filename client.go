@@ -150,6 +150,11 @@ func (r *request) EncodeJSON(reqbody interface{}) *request {
 // `httpClientInterface`. It is recommended that the consumer does not
 // manipulate the request body during this callback.
 func (r *request) Prepare(prepareCB func(*http.Request) error) *request {
+	// do nothing if there is already an error preparing this request
+	if r.err != nil {
+		return nil
+	}
+
 	r.prepareCB = prepareCB
 	return r
 }
