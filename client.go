@@ -40,44 +40,53 @@ func (c *Client) lazyInitialize() {
 	}
 }
 
-// GET generates an HTTP GET `*request` that the caller may customize and
-// ultimately `Do()`
+// GET initializes an HTTP GET `*request` targeting the provided url. The
+// caller can now chain request preparation functions.
 func (c *Client) GET(u *url.URL) *request {
-	c.lazyInitialize()
-	return makeRequest(c.ci, http.MethodGet, u)
+	return c.NewRequest(http.MethodGet, u)
 }
 
-// POST generates an HTTP POST `*request` that the caller may customize and
-// ultimately `Do()`
+// HEAD initializes an HTTP HEAD `*request` targeting the provided url. The
+// caller can now chain request preparation functions.
+func (c *Client) HEAD(u *url.URL) *request {
+	return c.NewRequest(http.MethodHead, u)
+}
+
+// POST initializes an HTTP POST `*request` targeting the provided url. The
+// caller can now chain request preparation functions.
 func (c *Client) POST(u *url.URL) *request {
-	c.lazyInitialize()
-	return makeRequest(c.ci, http.MethodPost, u)
+	return c.NewRequest(http.MethodPost, u)
 }
 
-// PUT generates an HTTP PUT `*request` that the caller may customize and
-// ultimately `Do()`
+// PUT initializes an HTTP PUT `*request` targeting the provided url. The
+// caller can now chain request preparation functions.
 func (c *Client) PUT(u *url.URL) *request {
-	c.lazyInitialize()
-	return makeRequest(c.ci, http.MethodPut, u)
+	return c.NewRequest(http.MethodPut, u)
 }
 
-// PATCH generates an HTTP PATCH `*request` that the caller may customize and
-// ultimately `Do()`
+// PATCH initializes an HTTP PATCH `*request` targeting the provided url. The
+// caller can now chain request preparation functions.
 func (c *Client) PATCH(u *url.URL) *request {
-	c.lazyInitialize()
-	return makeRequest(c.ci, http.MethodPatch, u)
+	return c.NewRequest(http.MethodPatch, u)
 }
 
-// DELETE generates an HTTP DELETE `*request` that the caller may customize and
-// ultimately `Do()`
+// DELETE initializes an HTTP DELETE `*request` targeting the provided url. The
+// caller can now chain request preparation functions.
 func (c *Client) DELETE(u *url.URL) *request {
+	return c.NewRequest(http.MethodDelete, u)
+}
+
+// NewRequest initialize an HTTP `*request` ready to use the provided request
+// method and targeting the provided url. The caller can now chain request
+// preparation functions.
+func (c *Client) NewRequest(method string, u *url.URL) *request {
 	c.lazyInitialize()
-	return makeRequest(c.ci, http.MethodDelete, u)
+	return makeRequest(c.ci, method, u)
 }
 
 // request holds the details necessary to later prepare an `*http.Request` and
 // also a reference to the `httpClientInterface` that will ultimately `Do()`
-// it.  However, the request may fail to become prepared, in which case there
+// it. However, the request may fail to become prepared, in which case there
 // is a non-nil `err`. The first error encountered is stored and once the err
 // is non-nil, all subsequent calls on the `*request` do nothing.
 type request struct {
@@ -127,7 +136,7 @@ func (r *request) EncodeJSON(reqbody interface{}) *request {
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(reqbody)
 	if err != nil {
-		r.err = fmt.Errorf("Failed to encode body for '%s %s': %w", r.method, r.u.String(), err)
+		r.err = fmt.Errorf("failed to encode body for '%s %s': %w", r.method, r.u.String(), err)
 		return r
 	}
 
@@ -141,6 +150,11 @@ func (r *request) EncodeJSON(reqbody interface{}) *request {
 // `httpClientInterface`. It is recommended that the consumer does not
 // manipulate the request body during this callback.
 func (r *request) Prepare(prepareCB func(*http.Request) error) *request {
+	// do nothing if there is already an error preparing this request
+	if r.err != nil {
+		return nil
+	}
+
 	r.prepareCB = prepareCB
 	return r
 }
@@ -162,7 +176,7 @@ func (r *request) Do() *result {
 		return &result{
 			request:  r,
 			response: nil,
-			err:      fmt.Errorf("Failed to prepare request for '%s %s': %w", r.method, urlstr, err),
+			err:      fmt.Errorf("failed to prepare request for '%s %s': %w", r.method, urlstr, err),
 		}
 	}
 
@@ -170,7 +184,7 @@ func (r *request) Do() *result {
 		return &result{
 			request:  r,
 			response: nil,
-			err:      fmt.Errorf("Expected a non-nil request for '%s %s'", r.method, urlstr),
+			err:      fmt.Errorf("expected a non-nil request for '%s %s'", r.method, urlstr),
 		}
 	}
 
@@ -180,7 +194,7 @@ func (r *request) Do() *result {
 			return &result{
 				request:  r,
 				response: nil,
-				err:      fmt.Errorf("Failed to execute the prepare callback for '%s %s': %w", r.method, urlstr, err),
+				err:      fmt.Errorf("failed to execute the prepare callback for '%s %s': %w", r.method, urlstr, err),
 			}
 		}
 	}
@@ -190,7 +204,7 @@ func (r *request) Do() *result {
 		return &result{
 			request:  r,
 			response: nil,
-			err:      fmt.Errorf("Non-protocol request error for '%s %v': %w", r.method, req.URL, err),
+			err:      fmt.Errorf("non-protocol request error for '%s %v': %w", r.method, req.URL, err),
 		}
 	}
 
@@ -221,7 +235,7 @@ func (r *result) Response() (*http.Response, error) {
 	}
 
 	if r.response == nil {
-		return nil, fmt.Errorf("Expected a non-nil response for '%s %s'", r.request.method, r.request.u)
+		return nil, fmt.Errorf("expected a non-nil response for '%s %s'", r.request.method, r.request.u)
 	}
 
 	if err := checkStatus(r.request, r.response); err != nil {
@@ -241,22 +255,40 @@ func (r *result) RawBytes() (*http.Response, []byte, error) {
 		return nil, nil, r.err
 	}
 
+	buf := &bytes.Buffer{}
+	response, err := r.StreamResponse(buf)
+	if err != nil {
+		return response, nil, err
+	}
+	return response, buf.Bytes(), err
+}
+
+// StreamResponse streams the response body into the supplied destination
+// writer. It also returns the underlying http response. This method therefore
+// reads and closes the response body. If there was an error anywhere in the
+// chain, it is returned. As long as an HTTP response was generated, it will be
+// returned. This method terminates a call chain.
+func (r *result) StreamResponse(dst io.Writer) (*http.Response, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+
 	if r.response == nil {
-		return nil, nil, fmt.Errorf("Expected a non-nil response for '%s %s'", r.request.method, r.request.u)
+		return nil, fmt.Errorf("expected a non-nil response for '%s %s'", r.request.method, r.request.u)
 	}
 
 	defer r.response.Body.Close()
 
 	if err := checkStatus(r.request, r.response); err != nil {
-		return r.response, nil, err
+		return r.response, err
 	}
 
-	respbody, err := ioutil.ReadAll(r.response.Body)
+	_, err := io.Copy(dst, r.response.Body)
 	if err != nil {
-		return r.response, nil, fmt.Errorf("Failed to read response body for '%s %s': %w", r.request.method, r.request.u, err)
+		return r.response, fmt.Errorf("failed to copy response to destination for '%s %s': %w", r.request.method, r.request.u, err)
 	}
 
-	return r.response, respbody, nil
+	return r.response, nil
 }
 
 // DecodeJSON attempts to decode the response body into the provided `v`. This
@@ -269,7 +301,7 @@ func (r *result) DecodeJSON(v interface{}) (*http.Response, error) {
 	}
 
 	if r.response == nil {
-		return nil, fmt.Errorf("Expected a non-nil response for '%s %s'", r.request.method, r.request.u)
+		return nil, fmt.Errorf("expected a non-nil response for '%s %s'", r.request.method, r.request.u)
 	}
 
 	defer r.response.Body.Close()
@@ -279,12 +311,12 @@ func (r *result) DecodeJSON(v interface{}) (*http.Response, error) {
 	}
 
 	if v == nil {
-		return r.response, fmt.Errorf("Decode destination was nil for '%s %s'", r.request.method, r.request.u)
+		return r.response, fmt.Errorf("decode destination was nil for '%s %s'", r.request.method, r.request.u)
 	}
 
 	err := json.NewDecoder(r.response.Body).Decode(v)
 	if err != nil {
-		return r.response, fmt.Errorf("Failed to decode the response body for '%s %s': %w", r.request.method, r.request.u, err)
+		return r.response, fmt.Errorf("failed to decode the response body for '%s %s': %w", r.request.method, r.request.u, err)
 	}
 
 	return r.response, nil
