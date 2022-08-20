@@ -47,6 +47,13 @@ func (c *Client) GET(u *url.URL) *request {
 	return makeRequest(c.ci, http.MethodGet, u)
 }
 
+// HEAD generates an HTTP HEAD `*request` that the caller may customize and
+// ultimately `Do()`
+func (c *Client) HEAD(u *url.URL) *request {
+	c.lazyInitialize()
+	return makeRequest(c.ci, http.MethodHead, u)
+}
+
 // POST generates an HTTP POST `*request` that the caller may customize and
 // ultimately `Do()`
 func (c *Client) POST(u *url.URL) *request {
