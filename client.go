@@ -136,7 +136,7 @@ func (r *request) EncodeJSON(reqbody interface{}) *request {
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(reqbody)
 	if err != nil {
-		r.err = fmt.Errorf("Failed to encode body for '%s %s': %w", r.method, r.u.String(), err)
+		r.err = fmt.Errorf("failed to encode body for '%s %s': %w", r.method, r.u.String(), err)
 		return r
 	}
 
@@ -171,7 +171,7 @@ func (r *request) Do() *result {
 		return &result{
 			request:  r,
 			response: nil,
-			err:      fmt.Errorf("Failed to prepare request for '%s %s': %w", r.method, urlstr, err),
+			err:      fmt.Errorf("failed to prepare request for '%s %s': %w", r.method, urlstr, err),
 		}
 	}
 
@@ -179,7 +179,7 @@ func (r *request) Do() *result {
 		return &result{
 			request:  r,
 			response: nil,
-			err:      fmt.Errorf("Expected a non-nil request for '%s %s'", r.method, urlstr),
+			err:      fmt.Errorf("expected a non-nil request for '%s %s'", r.method, urlstr),
 		}
 	}
 
@@ -189,7 +189,7 @@ func (r *request) Do() *result {
 			return &result{
 				request:  r,
 				response: nil,
-				err:      fmt.Errorf("Failed to execute the prepare callback for '%s %s': %w", r.method, urlstr, err),
+				err:      fmt.Errorf("failed to execute the prepare callback for '%s %s': %w", r.method, urlstr, err),
 			}
 		}
 	}
@@ -199,7 +199,7 @@ func (r *request) Do() *result {
 		return &result{
 			request:  r,
 			response: nil,
-			err:      fmt.Errorf("Non-protocol request error for '%s %v': %w", r.method, req.URL, err),
+			err:      fmt.Errorf("non-protocol request error for '%s %v': %w", r.method, req.URL, err),
 		}
 	}
 
@@ -230,7 +230,7 @@ func (r *result) Response() (*http.Response, error) {
 	}
 
 	if r.response == nil {
-		return nil, fmt.Errorf("Expected a non-nil response for '%s %s'", r.request.method, r.request.u)
+		return nil, fmt.Errorf("expected a non-nil response for '%s %s'", r.request.method, r.request.u)
 	}
 
 	if err := checkStatus(r.request, r.response); err != nil {
@@ -251,7 +251,7 @@ func (r *result) RawBytes() (*http.Response, []byte, error) {
 	}
 
 	if r.response == nil {
-		return nil, nil, fmt.Errorf("Expected a non-nil response for '%s %s'", r.request.method, r.request.u)
+		return nil, nil, fmt.Errorf("expected a non-nil response for '%s %s'", r.request.method, r.request.u)
 	}
 
 	defer r.response.Body.Close()
@@ -262,7 +262,7 @@ func (r *result) RawBytes() (*http.Response, []byte, error) {
 
 	respbody, err := ioutil.ReadAll(r.response.Body)
 	if err != nil {
-		return r.response, nil, fmt.Errorf("Failed to read response body for '%s %s': %w", r.request.method, r.request.u, err)
+		return r.response, nil, fmt.Errorf("failed to read response body for '%s %s': %w", r.request.method, r.request.u, err)
 	}
 
 	return r.response, respbody, nil
@@ -278,7 +278,7 @@ func (r *result) DecodeJSON(v interface{}) (*http.Response, error) {
 	}
 
 	if r.response == nil {
-		return nil, fmt.Errorf("Expected a non-nil response for '%s %s'", r.request.method, r.request.u)
+		return nil, fmt.Errorf("expected a non-nil response for '%s %s'", r.request.method, r.request.u)
 	}
 
 	defer r.response.Body.Close()
@@ -288,12 +288,12 @@ func (r *result) DecodeJSON(v interface{}) (*http.Response, error) {
 	}
 
 	if v == nil {
-		return r.response, fmt.Errorf("Decode destination was nil for '%s %s'", r.request.method, r.request.u)
+		return r.response, fmt.Errorf("decode destination was nil for '%s %s'", r.request.method, r.request.u)
 	}
 
 	err := json.NewDecoder(r.response.Body).Decode(v)
 	if err != nil {
-		return r.response, fmt.Errorf("Failed to decode the response body for '%s %s': %w", r.request.method, r.request.u, err)
+		return r.response, fmt.Errorf("failed to decode the response body for '%s %s': %w", r.request.method, r.request.u, err)
 	}
 
 	return r.response, nil
