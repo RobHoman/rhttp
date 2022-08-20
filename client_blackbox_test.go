@@ -175,6 +175,13 @@ func TestBlackbox(t *testing.T) {
 			requestCheckFns: []requestCheckFn{checkRequestMethod(http.MethodGet)},
 		},
 		{
+			method: http.MethodHead,
+			fn: func(c *Client, u *url.URL) *request {
+				return c.HEAD(u)
+			},
+			requestCheckFns: []requestCheckFn{checkRequestMethod(http.MethodHead)},
+		},
+		{
 			method: http.MethodPost,
 			fn: func(c *Client, u *url.URL) *request {
 				return c.POST(u)
@@ -201,6 +208,13 @@ func TestBlackbox(t *testing.T) {
 				return c.DELETE(u)
 			},
 			requestCheckFns: []requestCheckFn{checkRequestMethod(http.MethodDelete)},
+		},
+		{
+			method: "USER_SPECIFIED_HTTP_METHOD",
+			fn: func(c *Client, u *url.URL) *request {
+				return c.NewRequest("USER_SPECIFIED_HTTP_METHOD", u)
+			},
+			requestCheckFns: []requestCheckFn{checkRequestMethod("USER_SPECIFIED_HTTP_METHOD")},
 		},
 	}
 

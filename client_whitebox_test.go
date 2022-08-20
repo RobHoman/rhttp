@@ -13,6 +13,9 @@ func TestClient(t *testing.T) {
 		http.MethodGet: func(c *Client, u *url.URL) *request {
 			return c.GET(u)
 		},
+		http.MethodHead: func(c *Client, u *url.URL) *request {
+			return c.HEAD(u)
+		},
 		http.MethodPost: func(c *Client, u *url.URL) *request {
 			return c.POST(u)
 		},
@@ -24,6 +27,9 @@ func TestClient(t *testing.T) {
 		},
 		http.MethodDelete: func(c *Client, u *url.URL) *request {
 			return c.DELETE(u)
+		},
+		"USER_SPECIFIED_REQUEST_METHOD": func(c *Client, u *url.URL) *request {
+			return c.NewRequest("USER_SPECIFIED_REQUEST_METHOD", u)
 		},
 	}
 
