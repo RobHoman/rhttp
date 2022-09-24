@@ -16,12 +16,12 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-type clientFn (func(*Client, *url.URL) *request)
+type clientFn (func(*Client, *url.URL) *Request)
 
-type requestFn (func(*request) *request)
+type requestFn (func(*Request) *Request)
 
 func encodeJSON(v interface{}) requestFn {
-	return func(r *request) *request {
+	return func(r *Request) *Request {
 		return r.EncodeJSON(v)
 	}
 }
@@ -114,7 +114,7 @@ func jsonPayload(v interface{}, t *testing.T) []byte {
 	return buf
 }
 
-type resultCheckFn (func(*result, *testing.T))
+type resultCheckFn (func(*Result, *testing.T))
 
 // N.B.(rob(h)) this also provides full coverage for StreamResponse. If that
 // changes, update the tests
@@ -122,7 +122,7 @@ func checkResultRawBytes(
 	expectedBuf []byte,
 	expectedErr error,
 ) resultCheckFn {
-	return func(result *result, t *testing.T) {
+	return func(result *Result, t *testing.T) {
 		_, actualBuf, actualErr := result.RawBytes()
 
 		if diff := cmp.Diff(expectedBuf, actualBuf); diff != "" {
@@ -139,7 +139,7 @@ func checkResultDecodeJSON(
 	expectedV payload,
 	expectedErr error,
 ) resultCheckFn {
-	return func(result *result, t *testing.T) {
+	return func(result *Result, t *testing.T) {
 		var actualV payload
 		_, actualErr := result.DecodeJSON(&actualV)
 
@@ -154,7 +154,7 @@ func checkResultDecodeJSON(
 }
 
 func checkResultDecodeJSONWithNilDest() resultCheckFn {
-	return func(result *result, t *testing.T) {
+	return func(result *Result, t *testing.T) {
 		expectedErr := cmpopts.AnyError
 		_, actualErr := result.DecodeJSON(nil)
 		if diff := cmp.Diff(expectedErr, actualErr, cmpopts.EquateErrors()); diff != "" {
@@ -171,49 +171,49 @@ func TestBlackbox(t *testing.T) {
 	}{
 		{
 			method: http.MethodGet,
-			fn: func(c *Client, u *url.URL) *request {
+			fn: func(c *Client, u *url.URL) *Request {
 				return c.GET(u)
 			},
 			requestCheckFns: []requestCheckFn{checkRequestMethod(http.MethodGet)},
 		},
 		{
 			method: http.MethodHead,
-			fn: func(c *Client, u *url.URL) *request {
+			fn: func(c *Client, u *url.URL) *Request {
 				return c.HEAD(u)
 			},
 			requestCheckFns: []requestCheckFn{checkRequestMethod(http.MethodHead)},
 		},
 		{
 			method: http.MethodPost,
-			fn: func(c *Client, u *url.URL) *request {
+			fn: func(c *Client, u *url.URL) *Request {
 				return c.POST(u)
 			},
 			requestCheckFns: []requestCheckFn{checkRequestMethod(http.MethodPost)},
 		},
 		{
 			method: http.MethodPut,
-			fn: func(c *Client, u *url.URL) *request {
+			fn: func(c *Client, u *url.URL) *Request {
 				return c.PUT(u)
 			},
 			requestCheckFns: []requestCheckFn{checkRequestMethod(http.MethodPut)},
 		},
 		{
 			method: http.MethodPatch,
-			fn: func(c *Client, u *url.URL) *request {
+			fn: func(c *Client, u *url.URL) *Request {
 				return c.PATCH(u)
 			},
 			requestCheckFns: []requestCheckFn{checkRequestMethod(http.MethodPatch)},
 		},
 		{
 			method: http.MethodDelete,
-			fn: func(c *Client, u *url.URL) *request {
+			fn: func(c *Client, u *url.URL) *Request {
 				return c.DELETE(u)
 			},
 			requestCheckFns: []requestCheckFn{checkRequestMethod(http.MethodDelete)},
 		},
 		{
 			method: "USER_SPECIFIED_HTTP_METHOD",
-			fn: func(c *Client, u *url.URL) *request {
+			fn: func(c *Client, u *url.URL) *Request {
 				return c.NewRequest("USER_SPECIFIED_HTTP_METHOD", u)
 			},
 			requestCheckFns: []requestCheckFn{checkRequestMethod("USER_SPECIFIED_HTTP_METHOD")},
