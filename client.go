@@ -113,6 +113,17 @@ func makeRequest(
 	}
 }
 
+func (r *Request) WithQueryParam(key, value string) *Request {
+	// do nothing if there is already an error preparing this request
+	if r.err != nil {
+		return r
+	}
+
+	r.u.Query().Add(key, value)
+
+	return r
+}
+
 // WithRequestBody allows the consumer to specify any request body
 func (r *Request) WithRequestBody(reqbody io.ReadCloser) *Request {
 	// do nothing if there is already an error preparing this request
