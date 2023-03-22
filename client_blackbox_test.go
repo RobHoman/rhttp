@@ -298,30 +298,6 @@ func TestBlackbox(t *testing.T) {
 			fn:            respondWith(0, nil, fmt.Errorf("injected error")),
 			resultCheckFn: checkResultRawBytes(nil, cmpopts.AnyError),
 		},
-		{
-			name: "respondWith400",
-			fn: respondWith(
-				http.StatusBadRequest,
-				[]byte(http.StatusText(http.StatusBadRequest)),
-				nil,
-			),
-			resultCheckFn: checkResultRawBytes(
-				nil,
-				NewError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)),
-			),
-		},
-		{
-			name: "respondWith500",
-			fn: respondWith(
-				http.StatusInternalServerError,
-				[]byte(http.StatusText(http.StatusInternalServerError)),
-				nil,
-			),
-			resultCheckFn: checkResultRawBytes(
-				nil,
-				NewError(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError)),
-			),
-		},
 	}
 
 	type testCase struct {

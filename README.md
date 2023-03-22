@@ -98,8 +98,6 @@ the underlying `*http.Response`
 - `DecodeJSON(interface{})` decodes the response body into the provided
   parameter, in addition to returning the underlying `*http.Response`
 
-In all cases, the final returned value is an error. See [Errors](#Errors).
-
 ### Client Initialization
 The zero-value for an `rhttp.Client` struct is a ready-to-use client. The
 underlying `http.Client` used will be lazily initialized as the zero-value
@@ -108,7 +106,8 @@ configure and customize the underlying http client, they should construct their
 `rhttp.Client` using the `NewClient` constructor.
 
 ### Errors
-TL;DR: Wherever a non-nil error is encountered in any phase of the request life cycle, it is immediately returned. Subsequent functions & phases do not occur.
+TL;DR: Wherever a non-nil error is encountered in any phase of the request life
+cycle, it is immediately returned. Subsequent functions & phases do not occur.
 
 An error could occur at a variety of points during the phases of the request
 life cycle. During request preparation, there could be an error while encoding
@@ -119,38 +118,3 @@ response handling there could be an error decoding the response body.
 Since these steps have a predefined linear sequence, and since each step is
 predicated upon the success of the previous step, the first error encountered is
 immediately returned and subsequent steps are canceled.
-
-If the request life cycle is successful on an HTTP-protocol level, this library
-inspects the HTTP response code. 4xx- & 5xx-series HTTP responses are converted
-into errors. The consumer can easily check for these errors. See [HTTP
-Errors](#http-errors).
-
-## HTTP Errors
-The `rhttp.Error` type holds an HTTP status code and a message, and it meets the
-golang `error` interface. The `Is` and `HasStatusCode` methods allow the
-consumer to easily check the error for its underlying status code and handle it
-accordingly.
-
-Here is an example with an error check:
-```
-c := &rhttp.Client{}
-u := &url.URL{
-	Scheme: "https",
-	Host:   "HOSTNAME",
-	Path:   "RESOURCE-PATH",
-}
-
-var requestPayload interface{}
-var responsePayload interface{}
-resp, err := c.POST(u).
-	EncodeJSON(&requestPayload).
-	Do().
-	DecodeJSON(&responsePayload)
-if rhttp.ErrConflict.Is(err) {
-	// http protocol steps were successful, and the server responded with a 4XX or
-	// 5XX error, in this case some sort of 409 CONFLICT - handle accordingly
-} else if err != nil {
-	// there was an error that prevented receiving a valid http response from the
-  // server - handle accordingly
-}
-```
