@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 )
@@ -235,38 +234,36 @@ type Result struct {
 	err      error
 }
 
-// Response returns the underlying HTTP response, which is useful
-// to consumers who wish to handle the response body in a way that
-// is not otherwise supported by this library. The caller is
-// responsible for closing the request body. This method
-// terminates the call chain.
+// Response returns the underlying HTTP response, which is useful to consumers
+// who wish to handle the response body in a way that is not otherwise
+// supported by this library. The caller is responsible for closing the request
+// body. If there was an error anywhere in the chain, it is returned. As long
+// as an HTTP response was generated, it is returned. This method terminates a
+// call chain.
 func (r *Result) Response() (*http.Response, error) {
 	if r.err != nil {
-		return nil, r.err
+		return r.response, r.err
 	}
 
 	if r.response == nil {
 		return nil, fmt.Errorf("expected a non-nil response for '%s %s'", r.request.method, r.request.u)
 	}
 
-	if err := checkStatus(r.request, r.response); err != nil {
-		return nil, err
-	}
-
 	return r.response, nil
 }
 
-// RawBytes reads the entire response body into a slice of bytes
-// and returns it, along with the underlying response. This method therefore
-// reads and closes the response body. If there was an error anywhere in the
-// chain, it is returned. As long as an HTTP response was generated, it will be
-// returned. This method terminates a call chain.
+// RawBytes reads the entire response body into a slice of bytes and returns
+// it. If there was an error anywhere in the chain, it is returned. As long as
+// an HTTP response was generated, it is returned. However, note that this
+// method reads and closes the response body. This method terminates a call
+// chain.
 func (r *Result) RawBytes() (*http.Response, []byte, error) {
 	if r.err != nil {
-		return nil, nil, r.err
+		return r.response, nil, r.err
 	}
 
-	buf := &bytes.Buffer{}
+	buf := bytes.NewBuffer([]byte{})
+
 	response, err := r.StreamResponse(buf)
 	if err != nil {
 		return response, nil, err
@@ -275,13 +272,13 @@ func (r *Result) RawBytes() (*http.Response, []byte, error) {
 }
 
 // StreamResponse streams the response body into the supplied destination
-// writer. It also returns the underlying http response. This method therefore
-// reads and closes the response body. If there was an error anywhere in the
-// chain, it is returned. As long as an HTTP response was generated, it will be
-// returned. This method terminates a call chain.
+// writer. If there was an error anywhere in the chain, it is returned. As long
+// as an HTTP response was generated, it is returned. However, note that this
+// method reads and closes the response body. This method terminates a call
+// chain.
 func (r *Result) StreamResponse(dst io.Writer) (*http.Response, error) {
 	if r.err != nil {
-		return nil, r.err
+		return r.response, r.err
 	}
 
 	if r.response == nil {
@@ -289,10 +286,6 @@ func (r *Result) StreamResponse(dst io.Writer) (*http.Response, error) {
 	}
 
 	defer r.response.Body.Close()
-
-	if err := checkStatus(r.request, r.response); err != nil {
-		return r.response, err
-	}
 
 	_, err := io.Copy(dst, r.response.Body)
 	if err != nil {
@@ -302,13 +295,14 @@ func (r *Result) StreamResponse(dst io.Writer) (*http.Response, error) {
 	return r.response, nil
 }
 
-// DecodeJSON attempts to decode the response body into the provided `v`. This
-// method therefore reads and closes the response body. If there was an error
-// anywhere in the chain, it is returned. As long as an HTTP response was
-// generated, it will be returned. This method terminates a call chain.
+// DecodeJSON attempts to decode the response body into the provided interface
+// `v`. If there was an error anywhere in the chain, it is returned. As long as
+// an HTTP response was generated, it is returned. However, note that this
+// method reads and closes the response body. This method terminates a call
+// chain.
 func (r *Result) DecodeJSON(v interface{}) (*http.Response, error) {
 	if r.err != nil {
-		return nil, r.err
+		return r.response, r.err
 	}
 
 	if r.response == nil {
@@ -316,10 +310,6 @@ func (r *Result) DecodeJSON(v interface{}) (*http.Response, error) {
 	}
 
 	defer r.response.Body.Close()
-
-	if err := checkStatus(r.request, r.response); err != nil {
-		return r.response, err
-	}
 
 	if v == nil {
 		return r.response, fmt.Errorf("decode destination was nil for '%s %s'", r.request.method, r.request.u)
@@ -331,33 +321,4 @@ func (r *Result) DecodeJSON(v interface{}) (*http.Response, error) {
 	}
 
 	return r.response, nil
-}
-
-// checkStatus inspects for status codes greater than or equal to 400. If it
-// sees such a status code, it translates the data into a typed http error, as
-// defined by this package
-func checkStatus(
-	request *Request,
-	response *http.Response,
-) error {
-	if response.StatusCode >= http.StatusBadRequest {
-		message, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			message = []byte(
-				fmt.Sprintf(
-					"Failed to read response body for '%s %s': %v",
-					request.method,
-					request.u,
-					err,
-				),
-			)
-		}
-
-		return NewError(
-			response.StatusCode,
-			string(message),
-		)
-	}
-
-	return nil
 }
